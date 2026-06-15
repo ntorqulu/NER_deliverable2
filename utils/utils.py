@@ -4,6 +4,10 @@ import os
 import re
 from collections import Counter
 from typing import List, Tuple, Dict
+from pathlib import Path
+import random
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 import numpy as np
 import pandas as pd
@@ -15,6 +19,9 @@ from sklearn.metrics import (
 )
 
 from collections import defaultdict
+
+DATA_DIR  = Path('data')
+MODEL_DIR = Path('fitted_models')
 
 #############################################
 # 1. DATA LOADING
@@ -318,6 +325,34 @@ def sp_update(weights: defaultdict, tokens, y_true, y_pred, feat_fn):
         prev_pred = pred
 
 
+def train_structured_perceptron(train_sents, train_labels, label_set,
+                                 n_epochs=20, seed=42, averaged=True):
+    weights  = defaultdict(float)
+    cumsum   = defaultdict(float)   # running sum for averaging
+    t        = 0                    # total update count
+    indices  = list(range(len(train_sents)))
+    random.seed(seed)
+
+    for epoch in range(n_epochs):
+        random.shuffle(indices)
+        errors = 0
+        for i in indices:
+            y_pred = sp_viterbi(weights, train_sents[i], label_set, sp_token_features)
+            if y_pred != list(train_labels[i]):
+                sp_update(weights, train_sents[i], train_labels[i], y_pred, sp_token_features)
+                errors += 1
+            t += 1
+            if averaged:
+                for f, v in weights.items():
+                    cumsum[f] += v
+        print(f'  Epoch {epoch+1:2d}: sentence errors = {errors}/{len(train_sents)}')
+
+    if averaged:
+        final = defaultdict(float, {f: cumsum[f] / t for f in cumsum})
+        return final
+    return weights
+
+
 #############################################
 # 4. BILSTM FEATURE ENGINEERING
 #############################################
@@ -448,3 +483,28 @@ def format_confusion_matrix(cm, labels):
         cm, index=[f"true:{l}" for l in labels], columns=[f"pred:{l}" for l in labels]
     )
     return df.to_string()
+
+
+def full_eval(model_name, y_true_seqs, y_pred_seqs, split_name):
+    res = evaluate_model(y_true_seqs, y_pred_seqs, exclude_O=True)
+    print(f'\n{'='*60}')
+    print(f'{model_name} — {split_name}  (non-O labels only)')
+    print(f'  Accuracy  : {res["accuracy"]:.4f}')
+    print(f'  F1 macro  : {res["f1_macro"]:.4f}')
+    print(f'  F1 weighted: {res["f1_weighted"]:.4f}')
+    print()
+    print(res['report'])
+    # Confusion matrix
+    print('Confusion matrix:')
+    print(format_confusion_matrix(res['cm'], res['cm_labels']))
+    # Plot CM
+    fig, ax = plt.subplots(figsize=(max(5, len(res['cm_labels'])), max(4, len(res['cm_labels'])-1)))
+    sns.heatmap(res['cm'], annot=True, fmt='d', cmap='Blues',
+                xticklabels=res['cm_labels'], yticklabels=res['cm_labels'], ax=ax)
+    ax.set_xlabel('Predicted'); ax.set_ylabel('True')
+    ax.set_title(f'{model_name} — {split_name} confusion matrix (non-O)')
+    plt.tight_layout()
+    fname = f'{model_name.lower().replace(" ","_")}_{split_name.lower()}_cm.png'
+    plt.savefig(MODEL_DIR / fname, dpi=120)
+    plt.show()
+    return res
