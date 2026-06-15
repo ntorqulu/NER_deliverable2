@@ -487,7 +487,7 @@ def format_confusion_matrix(cm, labels):
 
 def full_eval(model_name, y_true_seqs, y_pred_seqs, split_name):
     res = evaluate_model(y_true_seqs, y_pred_seqs, exclude_O=True)
-    print(f'\n{'='*60}')
+    print(f'{"="*40}\nFull evaluation for {model_name} on {split_name} (non-O labels only)\n{"="*40}')
     print(f'{model_name} — {split_name}  (non-O labels only)')
     print(f'  Accuracy  : {res["accuracy"]:.4f}')
     print(f'  F1 macro  : {res["f1_macro"]:.4f}')
