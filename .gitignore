@@ -1,2 +1,11 @@
-utils/__pycache__/
-.vscode/
+# models
+fitted_models/
+
+# or more strict
+*.pkl
+*.pt
+*.safetensors
+
+# system
+.DS_Store
+__pycache__/

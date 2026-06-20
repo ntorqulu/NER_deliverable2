@@ -1,7 +1,7 @@
 name: ner_deliverable2
 channels:
-  - pytorch
   - conda-forge
+  - pytorch
   - defaults
 dependencies:
   - python=3.11
@@ -17,3 +17,8 @@ dependencies:
     - sklearn-crfsuite>=0.3.6
     - torch>=2.0
     - pytorch-crf>=0.7.2
+    - transformers>=4.40
+    - accelerate>=1.1.0
+    - seqeval>=1.2.2
+    - tqdm>=4.65
+    - gensim>=4.0
